@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: aws-s3-bookings
+    app.kubernetes.io/runtime: camel
+  name: aws-s3-bookings
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: http
+  selector:
+    app.kubernetes.io/name: aws-s3-bookings
+  type: ClusterIP

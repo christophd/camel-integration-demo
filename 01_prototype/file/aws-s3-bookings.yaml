@@ -1,0 +1,30 @@
+- route:
+    from:
+      uri: "file://inbox"
+      parameters:
+        noop: true
+      steps:
+        - unmarshal:
+            csv: {}
+        - split:
+            simple: "${body}"
+            steps:
+              - choice:
+                  when:
+                    - simple: ${body[1]} > 100
+                      steps:
+                        - setHeader:
+                            name: "status"
+                            constant: "APPROVAL_REQUIRED"
+                  otherwise:
+                    steps:
+                      - setHeader:
+                          name: "status"
+                          constant: "PENDING"
+              - setBody:
+                  simple: |
+                    { "client": "camel-batch", "product": "${body[0]}", "amount": ${body[1]}, "price": ${body[2]}, "status": "${header.status}" }
+              - to:
+                  uri: "log:info"
+                  parameters:
+                    showBodyType: true

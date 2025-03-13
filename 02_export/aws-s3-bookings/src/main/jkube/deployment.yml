@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: aws-s3-bookings
+    app.kubernetes.io/runtime: camel
+    app.openshift.io/runtime: camel
+  name: aws-s3-bookings
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: aws-s3-bookings
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: aws-s3-bookings
+        app.kubernetes.io/runtime: camel
+    spec:
+      containers:
+      - name: aws-s3-bookings
+        env:
+          - name: KAFKA_BOOTSTRAP_SERVERS
+            value: my-cluster-kafka-bootstrap:9092
+          - name: AWS_BUCKET_NAME_OR_ARN
+            valueFrom:
+              secretKeyRef:
+                name: aws-s3-credentials
+                key: aws.bucketNameOrArn
+          - name: AWS_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: aws-s3-credentials
+                key: aws.accessKey
+          - name: AWS_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: aws-s3-credentials
+                key: aws.secretKey
+          - name: AWS_REGION
+            valueFrom:
+              secretKeyRef:
+                name: aws-s3-credentials
+                key: aws.region
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP

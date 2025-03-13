@@ -1,0 +1,79 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    app.openshift.io/connects-to: "bookings,supplies,completed,shipping,postgresql"
+  labels:
+    app.kubernetes.io/managed-by: quarkus
+    app.kubernetes.io/name: food-market-demo
+    app.kubernetes.io/version: 1.2.0
+    app.openshift.io/runtime: quarkus
+  name: food-market-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: food-market-demo
+      app.kubernetes.io/version: 1.2.0
+  template:
+    metadata:
+      annotations:
+        app.openshift.io/connects-to: "bookings,supplies,completed,shipping,postgresql"
+      labels:
+        app.kubernetes.io/managed-by: quarkus
+        app.kubernetes.io/name: food-market-demo
+        app.kubernetes.io/version: 1.2.0
+    spec:
+      containers:
+        - env:
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: my-cluster-kafka-bootstrap:9092
+            - name: QUARKUS_MAILER_MOCK
+              value: "true"
+            - name: QUARKUS_DATASOURCE_JDBC_URL
+              value: "jdbc:postgresql://postgresql:5432/food-market"
+            - name: QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION
+              value: "drop-and-create"
+            - name: FOOD_MARKET_SHIPPING_SERVICE_ENABLED
+              value: "false"
+          image: quay.io/citrusframework/food-market-demo:1.2.0
+          imagePullPolicy: Always
+          name: food-market-demo
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: food-market-demo
+spec:
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app.kubernetes.io/name: food-market-demo
+    app.kubernetes.io/version: 1.2.0
+  sessionAffinity: None
+  type: ClusterIP
+
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: food-market-demo
+spec:
+  path: /
+  to:
+    kind: Service
+    name: food-market-demo
+    weight: 100
+  host: ''
+  port:
+    targetPort: http
+  alternateBackends: []

@@ -1,0 +1,39 @@
+- route:
+    from:
+      uri: "kamelet:aws-s3-source"
+      parameters:
+        bucketNameOrArn: "{{aws.bucketNameOrArn}}"
+        accessKey: "{{aws.accessKey}}"
+        secretKey: "{{aws.secretKey}}"
+        region: "{{aws.region}}"
+        forcePathStyle: "{{aws.forcePathStyle:false}}"
+        overrideEndpoint: "{{aws.overrideEndpoint:false}}"
+        uriEndpointOverride: "{{aws.uriEndpointOverride:none}}"
+      steps:
+        - unmarshal:
+            csv: {}
+        - split:
+            simple: "${body}"
+            steps:
+              - choice:
+                  when:
+                    - simple: ${body[1]} > 100
+                      steps:
+                        - setHeader:
+                            name: "status"
+                            constant: "APPROVAL_REQUIRED"
+                  otherwise:
+                    steps:
+                      - setHeader:
+                          name: "status"
+                          constant: "PENDING"
+              - setBody:
+                  simple: |
+                    { "client": "camel-batch", "product": "${body[0]}", "amount": ${body[1]}, "price": ${body[2]}, "status": "${header.status}" }
+              - setHeader:
+                  name: kafka.KEY
+                  simple: "${header.CamelAwsS3Key}_${header.CamelSplitIndex}"
+              - to:
+                  uri: "kafka:bookings"
+                  parameters:
+                    brokers: "{{kafka.bootstrapServers}}"

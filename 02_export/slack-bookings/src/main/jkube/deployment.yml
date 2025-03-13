@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: slack-bookings
+    app.kubernetes.io/runtime: camel
+    app.openshift.io/runtime: camel
+  name: slack-bookings
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: slack-bookings
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: slack-bookings
+        app.kubernetes.io/runtime: camel
+    spec:
+      containers:
+      - name: slack-bookings
+        env:
+          - name: KAFKA_BOOTSTRAP_SERVERS
+            value: my-cluster-kafka-bootstrap:9092
+          - name: SLACK_WEBHOOK_URL
+            valueFrom:
+              secretKeyRef:
+                name: slack-credentials
+                key: slack.webhookUrl
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP

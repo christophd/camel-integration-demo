@@ -1,0 +1,66 @@
+name: aws.s3-bookings-test
+variables:
+  - name: "aws.bucketNameOrArn"
+    value: bookings-s3-bucket
+actions:
+  - testcontainers:
+      start:
+        kafka: {}
+  - testcontainers:
+      start:
+        localstack:
+          services:
+            - "S3"
+  - camel:
+      startContext: { }
+  - camel:
+      createComponent:
+        name: amazonS3Client
+        file: amazonS3Client.groovy
+  - camel:
+      jbang:
+        run:
+          waitForRunningState: false
+          integration:
+            file: "../aws-s3-bookings.yaml"
+            systemProperties:
+              file: "application.test.properties"
+  - send:
+      endpoint: |
+        camel:aws2-s3:${aws.bucketNameOrArn}?amazonS3Client=#amazonS3Client
+      message:
+        body:
+          data: |
+            Apple,200,1.0
+            Orange,100,1.0
+            Pineapple,100,2.99
+        headers:
+          - name: "CamelAwsS3Key"
+            value: "bookings.csv"
+  - receive:
+      endpoint: "kafka:bookings?server=${CITRUS_TESTCONTAINERS_KAFKA_BOOTSTRAP_SERVERS}"
+      message:
+        body:
+          data: |
+            { "client": "camel-batch", "product": "Apple", "amount": 200, "price": 1.0, "status": "APPROVAL_REQUIRED" }
+        headers:
+          - name: "citrus_kafka_messageKey"
+            value: "bookings.csv_0"
+  - receive:
+      endpoint: "kafka:bookings?server=${CITRUS_TESTCONTAINERS_KAFKA_BOOTSTRAP_SERVERS}"
+      message:
+        body:
+          data: |
+            { "client": "camel-batch", "product": "Orange", "amount": 100, "price": 1.0, "status": "PENDING" }
+        headers:
+          - name: "citrus_kafka_messageKey"
+            value: "bookings.csv_1"
+  - receive:
+      endpoint: "kafka:bookings?server=${CITRUS_TESTCONTAINERS_KAFKA_BOOTSTRAP_SERVERS}"
+      message:
+        body:
+          data: |
+            { "client": "camel-batch", "product": "Pineapple", "amount": 100, "price": 2.99, "status": "PENDING" }
+        headers:
+          - name: "citrus_kafka_messageKey"
+            value: "bookings.csv_2"

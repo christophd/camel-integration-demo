@@ -1,0 +1,17 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: cid-event-listener-route
+  labels:
+    app: camel-integration-demo
+spec:
+  host: cid.apps.ocp.lab.snimmo.com
+  to:
+    kind: Service
+    name: cid-event-listener
+    weight: 100
+  port:
+    targetPort: http-listener
+  tls:
+    termination: edge
+  wildcardPolicy: None

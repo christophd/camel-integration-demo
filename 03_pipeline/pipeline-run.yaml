@@ -1,0 +1,65 @@
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: aws-s3-bookings-pipeline-
+  labels:
+    app: camel-integration-demo
+spec:
+  taskRunTemplate:
+    serviceAccountName: pipeline
+  pipelineRef:
+    name: cid-build-pipeline
+  params:
+    - name: gitUrl
+      value: "https://github.com/christophd/camel-integration-demo.git"
+    - name: contextDir
+      value: "02_export/aws-s3-bookings"
+    - name: image
+      value: "image-registry.openshift-image-registry.svc:5000/camel-integration-day/aws-s3-bookings"
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 250Mi
+    - name: maven-settings
+      emptyDir: {}
+    - name: maven-local-repo
+      emptyDir: {}
+
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: slack-bookings-pipeline-
+  labels:
+    app: camel-integration-demo
+spec:
+  taskRunTemplate:
+    serviceAccountName: pipeline
+  pipelineRef:
+    name: cid-build-pipeline
+  params:
+    - name: gitUrl
+      value: "https://github.com/christophd/camel-integration-demo.git"
+    - name: contextDir
+      value: "02_export/slack-bookings"
+    - name: image
+      value: "image-registry.openshift-image-registry.svc:5000/camel-integration-day/slack-bookings"
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 250Mi
+    - name: maven-settings
+      emptyDir: {}
+    - name: maven-local-repo
+      emptyDir: {}

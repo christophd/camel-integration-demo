@@ -1,0 +1,25 @@
+apiVersion: triggers.tekton.dev/v1
+kind: EventListener
+metadata:
+  name: cid-event-listener
+  labels:
+    app: camel-integration-demo
+spec:
+  serviceAccountName: pipeline
+  triggers:
+    - name: cid-trigger
+      bindings:
+        - ref: github-push
+          kind: ClusterTriggerBinding
+      interceptors:
+        - ref:
+            name: "github"
+          params:
+            - name: "secretRef"
+              value:
+                secretName: cid-github-webhook-secret
+                secretKey: token
+            - name: "eventTypes"
+              value: [ "push" ]
+      template:
+        ref: cid-trigger-template

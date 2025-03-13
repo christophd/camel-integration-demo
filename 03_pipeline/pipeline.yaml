@@ -1,0 +1,101 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: cid-build-pipeline
+  labels:
+    app: camel-integration-demo
+spec:
+  params:
+    - name: gitUrl
+      type: string
+      description: The git repository URL to clone from.
+    - name: gitRevision
+      type: string
+      description: The git branch to clone.
+      default: main
+    - name: contextDir
+      description: The context directory from where to build the application
+      default: "."
+    - name: image
+      description: Container image to be built from the code
+  workspaces:
+    - name: shared-workspace
+    - name: maven-settings
+    - name: maven-local-repo
+  tasks:
+    - name: git-clone
+      taskRef:
+        kind: Task
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.gitUrl)
+        - name: revision
+          value: $(params.gitRevision)
+        - name: deleteExisting
+          value: "true"
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+    - name: build
+      taskRef:
+        kind: Task
+        name: maven
+      runAfter:
+        - git-clone
+      params:
+        - name: MAVEN_IMAGE
+          value: registry.access.redhat.com/ubi8/openjdk-17:1.21
+        - name: CONTEXT_DIR
+          value: $(params.contextDir)
+        - name: GOALS
+          value:
+            - "-B"
+            - "-ntp"
+            - -Djkube.image.name=$(params.image)
+            - -Djkube.container-image.name=$(params.image)
+            - verify
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: maven-settings
+          workspace: maven-settings
+        - name: maven-local-repo
+          workspace: maven-local-repo
+    - name: build-image
+      taskRef:
+        kind: Task
+        name: buildah
+      runAfter:
+        - build
+      params:
+        - name: DOCKERFILE
+          value: 'src/main/docker/Dockerfile.jvm'
+        - name: CONTEXT
+          value: $(params.contextDir)
+        - name: TLSVERIFY
+          value: "false"
+        - name: IMAGE
+          value: $(params.image)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+    - name: deploy
+      taskRef:
+        resolver: cluster
+        params:
+        - name: kind
+          value: task
+        - name: name
+          value: openshift-client
+        - name: namespace
+          value: openshift-pipelines
+      runAfter:
+        - build-image
+      params:
+        - name: SCRIPT
+          value: |
+            oc apply -f $(params.contextDir)/target/kubernetes/kubernetes.yml
+      workspaces:
+        - name: manifest_dir
+          workspace: shared-workspace

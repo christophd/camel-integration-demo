@@ -1,0 +1,16 @@
+- route:
+    from:
+      uri: "kafka:completed"
+      parameters:
+        brokers: "{{kafka.bootstrapServers}}"
+      steps:
+        - unmarshal:
+            json: {}
+        - setBody:
+            simple: |
+              Hey ${body[client]}, your booking :${body[product]}: ${body[product]}(${body[amount]}) has been COMPLETED! :tada:
+        - to:
+            uri: "kamelet:slack-sink"
+            parameters:
+              channel: "#bookings"
+              webhookUrl: "{{slack.webhookUrl}}"
